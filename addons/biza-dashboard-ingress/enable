@@ -1,0 +1,51 @@
+#!/bin/bash
+set -euo pipefail
+
+current_directory=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+name=$(basename $current_directory)
+
+DASHBOARD_DOMAIN=${1:-"admin.delegated.appliance.demo"}
+
+echo "*** Setup ${name} starting with admin domain $DASHBOARD_DOMAIN..."
+
+echo "### Ensuring addon dependencies been enabled..."
+$SNAP/microk8s-enable.wrapper rbac
+$SNAP/microk8s-enable.wrapper core/dashboard
+
+echo "### Done with addon dependencies"
+
+mkdir -p $current_directory/overlay
+cat <<EOF > $current_directory/overlay/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+patches:
+  - target:
+      group: networking.k8s.io
+      version: v1
+      kind: Ingress
+      name: dashboard-ingress
+    patch: |-
+      - op: replace #action
+        path: /spec/rules/0/host
+        value: $DASHBOARD_DOMAIN
+      - op: replace #action
+        path: /spec/tls/0/hosts/0
+        value: $DASHBOARD_DOMAIN
+EOF
+
+echo "### Enabling dashboard ingress"
+$SNAP/microk8s-kubectl.wrapper kustomize $current_directory/overlay | $SNAP/microk8s-kubectl.wrapper apply -f -
+echo "### Enabled dashboard ingress"
+
+touch ${SNAP_DATA}/var/lock/biza-dashboard-ingress.lock
+
+echo "
+### To create a read only token for the dashboard run
+kubectl create token admin-readonly-user -n kube-system
+### To create a read/write *** CAUTION *** run
+kubectl create token admin-user -n kube-system
+
+*** Setup ${name} complete
+"

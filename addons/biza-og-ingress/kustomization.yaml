@@ -1,0 +1,41 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: og-ingress
+commonLabels:
+  io.biza/component: ingress
+  io.biza/system: adr
+resources:
+  - namespace.yaml
+helmCharts:
+  - name: ingress-nginx
+    releaseName: og-ingress-software-product
+    repo: https://kubernetes.github.io/ingress-nginx
+    valuesInline:
+      controller:
+        electionID: software-product-nginx-leader
+        ingressClassResource:
+          name: software-product-nginx  # default: nginx
+          enabled: true
+          default: false
+          controllerValue: "k8s.io/software-product-nginx-nginx"
+        service:
+          type: NodePort
+          nodePorts:
+            http: 30280
+            https: 30200
+  - name: ingress-nginx
+    releaseName: og-ingress-internet
+    repo: https://kubernetes.github.io/ingress-nginx
+    valuesInline:
+      controller:
+        electionID: internet-nginx-leader
+        ingressClassResource:
+          name: internet-nginx  # default: nginx
+          enabled: true
+          default: false
+          controllerValue: "k8s.io/internet-nginx-nginx"
+        service:
+          type: NodePort
+          nodePorts:
+            http: 30380
+            https: 30300

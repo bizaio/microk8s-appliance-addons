@@ -1,0 +1,50 @@
+#!/bin/bash
+set -euo pipefail
+
+CERT_MANGER_VERSION=v1.12.0
+# To make helm work see https://microk8s.io/docs/services-and-ports
+HELM_CMD="helm --kubeconfig /var/snap/microk8s/current/credentials/client.config"
+
+current_directory=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+name=$(basename $current_directory)
+
+ADMIN_DOMAIN=${1:-"admin.delegated.appliance.demo"}
+
+echo "*** Setup ${name} starting with admin domain $ADMIN_DOMAIN..."
+
+echo "### Ensuring addon dependencies been enabled..."
+$SNAP/microk8s-enable.wrapper biza-base
+
+cat <<EOF > $current_directory/overlay/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../base
+patches:
+  - target:
+      group: networking.k8s.io
+      version: v1
+      kind: Ingress
+      name: ingress-admin-secure
+    patch: |-
+      - op: replace #action
+        path: /spec/rules/0/host
+        value: $ADMIN_DOMAIN
+      - op: replace #action
+        path: /spec/tls/0/hosts/0
+        value: $ADMIN_DOMAIN
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: og-admin
+    patch: |-
+      - op: replace #action
+        path: /spec/template/spec/containers/0/env/0/value
+        value: https://$ADMIN_DOMAIN
+EOF
+
+echo "### Setup base kustomize..."
+$SNAP/microk8s-kubectl.wrapper kustomize --enable-helm $current_directory/overlay | $SNAP/microk8s-kubectl.wrapper apply -f -
+
+echo "*** Setup $name complete"

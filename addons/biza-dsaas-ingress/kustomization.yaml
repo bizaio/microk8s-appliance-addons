@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: dsaas-ingress
+commonLabels:
+  io.biza/component: ingress
+  io.biza/system: dsaas
+resources:
+  - namespace.yaml
+helmCharts:
+  - name: ingress-nginx
+    releaseName: dsaas-ingress-adapter
+    repo: https://kubernetes.github.io/ingress-nginx
+    valuesInline:
+      controller:
+        electionID: adapter-nginx-leader
+        ingressClassResource:
+          name: adapter-nginx  # default: nginx
+          enabled: true
+          default: false
+          controllerValue: "k8s.io/adapter-nginx-nginx"
+        service:
+          type: NodePort
+          nodePorts:
+            http: 30280
+            https: 30200

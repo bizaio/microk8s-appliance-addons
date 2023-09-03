@@ -1,1 +1,0 @@
-See https://github.com/thanos-io/kube-thanos/tree/main - contents a copy from the `manifest` directory

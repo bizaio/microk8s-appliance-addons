@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+current_directory=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+name=$(basename $current_directory)
+
+echo "Disabling $name"
+$SNAP/microk8s-kubectl.wrapper delete namespace administration
+
+echo "Disabled $name"
