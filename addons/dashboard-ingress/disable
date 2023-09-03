@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+current_directory=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
+echo "Disabling dashboard ingress"
+$SNAP/microk8s-kubectl.wrapper delete -f ${current_directory}/dashboard.yaml
+echo "Disabled dashboard ingress"
+
+rm ${SNAP_DATA}/var/lock/biza-dashboard-ingress.lock

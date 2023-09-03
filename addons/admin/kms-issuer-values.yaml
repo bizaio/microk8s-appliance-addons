@@ -1,0 +1,4 @@
+env:
+  # -- The AWS region the controller is deployed to
+  - name: AWS_REGION
+    value: "ap-southeast-2"

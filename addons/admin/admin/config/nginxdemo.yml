@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nginxdemo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webserver
+  namespace: nginxdemo
+spec:
+  # important for rolling updates; here pods will need to
+  # be up for 30 seconds without crashing for the rolling
+  # update to be considered successful. Default is 0!
+  minReadySeconds: 30
+  selector:
+    matchLabels:
+      app: webserver
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: webserver
+    spec:
+      containers:
+        - name: webserver
+          image: "nginxdemos/hello"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: og-admin
+  name: nginxdemo-service
+  namespace: nginxdemo
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 9105
+      targetPort: 80
+  selector:
+    app: webserver
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-nginxdemo
+  namespace: nginxdemo
+spec:
+  ingressClassName: public-nginx
+  rules:
+    - host: nginxdemo.delegated.appliance.demo
+      http:
+        paths:
+          - pathType: Prefix
+            path: /
+            backend:
+              service:
+                name: nginxdemo-service
+                port:
+                  number: 9105

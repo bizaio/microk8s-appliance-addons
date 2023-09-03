@@ -1,0 +1,12 @@
+controller:
+  electionID: internal-nginx-leader
+  ingressClassResource:
+    name: internal-nginx  # default: nginx
+    enabled: true
+    default: false
+    controllerValue: "k8s.io/internal-nginx-nginx"
+  service:
+    type: NodePort
+    nodePorts:
+      http: 30180
+      https: 30100

@@ -1,19 +1,85 @@
 microk8s-addons:
-  description: "My awesome demo repository."
+  # A short description for the addons in this repository.
+  description: These addons are to run and support the biza og appliance
+
+  # Revision number. Increment when there are important changes.
+  revision: 1
+
+  # List of addons.
   addons:
-    - name: "python-hello-k8s"
-      description: "Demo addon implemented in python"
+    - name: dashboard-ingress
+      description: Setup and expose the kubernetes dashboard
+
+      # Addon version.
       version: "1.0.0"
-      check_status: "deployment.apps/python-demo-nginx"
+
+      # Test to check that addon has been enabled. This may be:
+      # - A path to a file. For example, "${SNAP_DATA}/var/lock/myaddon.enabled"
+      # - A Kubernetes resource, in the form `resourceType/resourceName`, just
+      #   as it would appear in the output of the `kubectl get all -A` command.
+      #   For example, "deployment.apps/registry".
+      #
+      # The addon is assumed to be enabled when the specified file or Kubernetes
+      # resource exists.
+      check_status: "ingress.networking.k8s.io/dashboard"
+
+      # List of architectures supported by this addon.
+      # MicroK8s supports "amd64", "arm64" and "s390x".
       supported_architectures:
-        - arm64
         - amd64
 
-    - name: "bash-hello-k8s"
-      description: "Bash based demo addon"
-      version: "1.0.0"
-      check_status: "deployment.apps/bash-demo-nginx"
+    - name: metrics
+      description: Setup appliance metrics subsystem - thanos + prometheus
+
+      # Addon version.
+      version: "1.0.1"
+
+      # Test to check that addon has been enabled. This may be:
+      # - A path to a file. For example, "${SNAP_DATA}/var/lock/myaddon.enabled"
+      # - A Kubernetes resource, in the form `resourceType/resourceName`, just
+      #   as it would appear in the output of the `kubectl get all -A` command.
+      #   For example, "deployment.apps/registry".
+      #
+      # The addon is assumed to be enabled when the specified file or Kubernetes
+      # resource exists.
+      check_status: "deployment.apps/prometheus-operator"
+
+      # List of architectures supported by this addon.
+      # MicroK8s supports "amd64", "arm64" and "s390x".
       supported_architectures:
         - amd64
-        - arm64
-        - s390x
+
+    - name: vector
+      description: Setup appliance logging subsystem - vector
+
+      # Addon version.
+      version: "1.0.1"
+
+      # Test to check that addon has been enabled. This may be:
+      # - A path to a file. For example, "${SNAP_DATA}/var/lock/myaddon.enabled"
+      # - A Kubernetes resource, in the form `resourceType/resourceName`, just
+      #   as it would appear in the output of the `kubectl get all -A` command.
+      #   For example, "deployment.apps/registry".
+      #
+      # The addon is assumed to be enabled when the specified file or Kubernetes
+      # resource exists.
+      check_status: "deployment.apps/vector"
+
+      # List of architectures supported by this addon.
+      # MicroK8s supports "amd64", "arm64" and "s390x".
+      supported_architectures:
+        - amd64
+
+    - name: admin
+      description: Administration UI for og appliance
+
+      # Addon version.
+      version: "0.8.0"
+
+      check_status: "deployment.apps/og-admin"
+
+      # List of architectures supported by this addon.
+      # MicroK8s supports "amd64", "arm64" and "s390x".
+      supported_architectures:
+        - amd64
+

@@ -1,0 +1,1149 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: adr
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: appliance
+---
+apiVersion: v1
+data:
+  consent-frontend-url: http://localhost:3004
+  dashboard-frontend-url: http://localhost:3003
+  spring-profiles-active: skaffold
+  vtt-frontend-url: http://localhost:3002
+kind: ConfigMap
+metadata:
+  labels:
+    io.biza/component: og
+    io.biza/system: adr
+  name: adr-app-config-c69t4k8c74
+  namespace: adr
+---
+apiVersion: v1
+data:
+  secret: |
+    a09zV1ViIWFiUlVjUnVnbFBIT3phcEhVcGh1QlVUdWNyb1NsR2lDcnVtKmtMekVyVXRybE
+    RyJHllRjFLLStheQ==
+kind: Secret
+metadata:
+  labels:
+    io.biza/component: og
+    io.biza/system: adr
+  name: nextauth-78tf942787
+  namespace: adr
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: og-service-public
+    io.biza/component: og
+    io.biza/system: adr
+  name: og-service-public-service
+  namespace: adr
+spec:
+  ports:
+    - name: http
+      port: 9101
+      targetPort: 9101
+  selector:
+    app: og-service-public
+    io.biza/component: og
+    io.biza/system: adr
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: og-service
+    io.biza/component: og
+    io.biza/system: adr
+  name: og-service-service
+  namespace: adr
+spec:
+  ports:
+    - name: http
+      port: 9101
+      targetPort: 9101
+  selector:
+    app: og-service
+    io.biza/component: og
+    io.biza/system: adr
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: og-service
+    io.biza/component: og
+    io.biza/system: adr
+  name: og-service
+  namespace: adr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: og-service
+      io.biza/component: og
+      io.biza/system: adr
+  template:
+    metadata:
+      labels:
+        app: og-service
+        io.biza/component: og
+        io.biza/system: adr
+    spec:
+      containers:
+        - env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  key: spring-profiles-active
+                  name: adr-app-config-c69t4k8c74
+            - name: OG_CONSENT-URL
+              valueFrom:
+                configMapKeyRef:
+                  key: consent-frontend-url
+                  name: adr-app-config-c69t4k8c74
+          image: software/adr/og/service:999f9980-dirty
+          imagePullPolicy: Never
+          name: og-service
+          volumeMounts:
+            - mountPath: /etc/ca
+              name: secret-volume
+            - mountPath: /etc/cert
+              name: tls-secret-volume
+      volumes:
+        - name: secret-volume
+          secret:
+            secretName: ca-secret
+        - name: tls-secret-volume
+          secret:
+            secretName: og-client-certificate-tls
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: og-service-public
+    io.biza/component: og
+    io.biza/system: adr
+  name: og-service-public
+  namespace: adr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: og-service-public
+      io.biza/component: og
+      io.biza/system: adr
+  template:
+    metadata:
+      labels:
+        app: og-service-public
+        io.biza/component: og
+        io.biza/system: adr
+    spec:
+      containers:
+        - env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  key: spring-profiles-active
+                  name: adr-app-config-c69t4k8c74
+          image: software/adr/og/service-public:999f9980-dirty
+          imagePullPolicy: Never
+          name: og-service-public
+          volumeMounts:
+            - mountPath: /etc/ca
+              name: secret-volume
+      volumes:
+        - name: secret-volume
+          secret:
+            secretName: ca-secret
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: sandbox-ca-cluster-issuer
+    kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/use-regex: "true"
+  labels:
+    io.biza/component: og
+    io.biza/system: adr
+  name: ingress-og
+  namespace: adr
+spec:
+  rules:
+    - host: og.sandbox.biza.local
+      http:
+        paths:
+          - backend:
+              service:
+                name: og-service-public-service
+                port:
+                  number: 9101
+            path: /.+/jwks
+            pathType: Prefix
+          - backend:
+              service:
+                name: og-service-public-service
+                port:
+                  number: 9101
+            path: /.+/return
+            pathType: Prefix
+          - backend:
+              service:
+                name: og-service-public-service
+                port:
+                  number: 9101
+            path: /.+/arrangements/revoke
+            pathType: Prefix
+  tls:
+    - hosts:
+        - og.sandbox.biza.local
+      secretName: og-ingress-cert
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: sandbox-ca-cluster-issuer
+  labels:
+    io.biza/component: og
+    io.biza/system: adr
+  name: ingress-og-secure
+  namespace: adr
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: og-secure.sandbox.biza.local
+      http:
+        paths:
+          - backend:
+              service:
+                name: og-service-service
+                port:
+                  number: 9101
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - og-secure.sandbox.biza.local
+      secretName: og-secure-ingress-cert
+---
+apiVersion: v1
+data:
+  client-id: vtt-api
+  client-secret: vtt-api-secret
+  consent-frontend-url: http://localhost:3004
+  dashboard-frontend-url: http://localhost:3003
+  og-client-id: vtt-api
+  og-client-secret: vtt-api-secret
+  spring-profiles-active: skaffold
+  vtt-frontend-url: http://localhost:3002
+kind: ConfigMap
+metadata:
+  labels:
+    io.biza/component: vtt-api
+    io.biza/system: adr
+  name: vtt-api-config-h75hm5hkh4
+  namespace: adr
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: vtt-backend
+    io.biza/component: vtt-api
+    io.biza/system: adr
+  name: vtt-backend-service
+  namespace: adr
+spec:
+  ports:
+    - name: http
+      port: 9101
+      targetPort: 9101
+  selector:
+    app: vtt-backend
+    io.biza/component: vtt-api
+    io.biza/system: adr
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: vtt-backend
+    io.biza/component: vtt-api
+    io.biza/system: adr
+  name: vtt-backend
+  namespace: adr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vtt-backend
+      io.biza/component: vtt-api
+      io.biza/system: adr
+  template:
+    metadata:
+      labels:
+        app: vtt-backend
+        io.biza/component: vtt-api
+        io.biza/system: adr
+    spec:
+      containers:
+        - env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  key: spring-profiles-active
+                  name: vtt-api-config-h75hm5hkh4
+            - name: VTT_FRONTEND-URL
+              valueFrom:
+                configMapKeyRef:
+                  key: vtt-frontend-url
+                  name: vtt-api-config-h75hm5hkh4
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUE-TOKEN_CLIENT-ID
+              valueFrom:
+                configMapKeyRef:
+                  key: client-id
+                  name: vtt-api-config-h75hm5hkh4
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUE-TOKEN_CLIENT-SECRET
+              valueFrom:
+                configMapKeyRef:
+                  key: client-secret
+                  name: vtt-api-config-h75hm5hkh4
+            - name: IDP_CLIENT-ID
+              valueFrom:
+                configMapKeyRef:
+                  key: og-client-id
+                  name: vtt-api-config-h75hm5hkh4
+            - name: IDP_CLIENT-SECRET
+              valueFrom:
+                configMapKeyRef:
+                  key: og-client-secret
+                  name: vtt-api-config-h75hm5hkh4
+          image: software/adr/vtt/backend:999f9980-dirty
+          imagePullPolicy: Never
+          name: vtt-backend
+          volumeMounts:
+            - mountPath: /etc/ca
+              name: secret-volume
+      volumes:
+        - name: secret-volume
+          secret:
+            secretName: ca-secret
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: sandbox-ca-cluster-issuer
+  labels:
+    io.biza/component: vtt-api
+    io.biza/system: adr
+  name: ingress-vtt-api
+  namespace: adr
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: vtt-api.sandbox.biza.local
+      http:
+        paths:
+          - backend:
+              service:
+                name: vtt-backend-service
+                port:
+                  number: 9101
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - vtt-api.sandbox.biza.local
+      secretName: vtt-api-ingress-cert
+---
+apiVersion: v1
+data:
+  config.json: |-
+    {
+      "vtt": {
+        "vttApiBaseUri": "https://vtt-api.sandbox.biza.local",
+        "templateId": "ad017ec9-b87a-4b1d-91e0-7e122033f677",
+        "directoryId": "9c1b745a-374a-456c-b14a-8f408d14ed82",
+        "DASHBOARD_BASE_URI": "https://og-dashboard-secure.sandbox.biza.local",
+        "appBaseUri": "https://vtt.sandbox.biza.local"
+      },
+      "system_oauth": {
+        "issuer": "https://mock-auth.sandbox.biza.local",
+        "clientId": "vtt-web",
+        "clientSecret": "vtt-web-secret"
+      },
+      "user_oauth": {
+        "issuer": "https://mock-auth.sandbox.biza.local",
+        "clientId": "vtt-appliance",
+        "clientSecret": "vtt-appliance-secret"
+      },
+      "logging": {
+        "name": "consent",
+        "level": "debug"
+      }
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    io.biza/component: vtt
+    io.biza/system: adr
+  name: vtt-app-config-kd567hk6m2
+  namespace: adr
+---
+apiVersion: v1
+data:
+  uiconfig.json: |-
+    {
+      "fonts": {
+        "heading1": "Karla Regular",
+        "heading2": "Archivo Light",
+        "heading3": "Archivo Light",
+        "heading4": "Archivo Light",
+        "button": "Karla Regular",
+        "forms": "Archivo Light",
+        "body": "Archivo Light"
+      },
+      "colors": {
+        "trustBlue": "#45A1F0",
+        "boldBlue": "#01103F",
+        "nodePink": "#D2348C",
+        "peerToPeerPurple": "#7228BB",
+        "trueBlue": "#1528E6",
+        "page": {
+          "background": "#F3F3F0"
+        },
+        "header": {
+          "background": "white",
+          "shadow-color": "#BDB7B1"
+        },
+        "card": {
+          "border": "#73B563"
+        }
+      }
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    io.biza/component: vtt
+    io.biza/system: adr
+  name: vtt-app-uiconfig-ckbgb9t9ff
+  namespace: adr
+---
+apiVersion: v1
+data:
+  secret: |
+    a09zV1ViIWFiUlVjUnVnbFBIT3phcEhVcGh1QlVUdWNyb1NsR2lDcnVtKmtMekVyVXRybE
+    RyJHllRjFLLStheQ==
+kind: Secret
+metadata:
+  labels:
+    io.biza/component: vtt
+    io.biza/system: adr
+  name: nextauth-78tf942787
+  namespace: adr
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: vtt
+    io.biza/component: vtt
+    io.biza/system: adr
+  name: vtt-service
+  namespace: adr
+spec:
+  ports:
+    - name: http
+      port: 9151
+      targetPort: 3000
+  selector:
+    app: vtt
+    io.biza/component: vtt
+    io.biza/system: adr
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: vtt
+    io.biza/component: vtt
+    io.biza/system: adr
+  name: vtt
+  namespace: adr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vtt
+      io.biza/component: vtt
+      io.biza/system: adr
+  template:
+    metadata:
+      labels:
+        app: vtt
+        io.biza/component: vtt
+        io.biza/system: adr
+    spec:
+      containers:
+        - env:
+            - name: APP_MODE
+              value: sandbox
+            - name: CONFIG_FILE
+              value: /app/config/config.json
+            - name: UICONFIG_FILE
+              value: /app/config/uiconfig.json
+            - name: NEXTAUTH_URL
+              value: https://vtt.sandbox.biza.local
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: secret
+                  name: nextauth-78tf942787
+          image: software/adr/vtt/frontend:999f9980
+          imagePullPolicy: Never
+          name: vtt
+          volumeMounts:
+            - mountPath: /etc/ca
+              name: secret-volume
+            - mountPath: /app/config
+              name: config
+      volumes:
+        - name: secret-volume
+          secret:
+            secretName: ca-secret
+        - configMap:
+            name: vtt-app-config-kd567hk6m2
+          name: config
+        - configMap:
+            name: vtt-app-uiconfig-ckbgb9t9ff
+          name: uiconfig
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: sandbox-ca-cluster-issuer
+  labels:
+    io.biza/component: vtt
+    io.biza/system: adr
+  name: ingress-vtt
+  namespace: adr
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: vtt.sandbox.biza.local
+      http:
+        paths:
+          - backend:
+              service:
+                name: vtt-service
+                port:
+                  number: 9151
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - vtt.sandbox.biza.local
+      secretName: vtt-ingress-cert
+---
+apiVersion: v1
+data:
+  client-id: vtt-api-2
+  client-secret: vtt-api-secret-2
+  consent-frontend-url: http://localhost:3004
+  dashboard-frontend-url: http://localhost:3003
+  og-client-id: vtt-api-2
+  og-client-secret: vtt-api-secret-2
+  spring-profiles-active: skaffold
+  vtt-frontend-url: http://localhost:3002
+kind: ConfigMap
+metadata:
+  labels:
+    io.biza/component: vtt-api-2
+    io.biza/system: adr
+  name: vtt-api-config-2-4hhhm8tt4d
+  namespace: adr
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: vtt-backend-2
+    io.biza/component: vtt-api-2
+    io.biza/system: adr
+  name: vtt-backend-service-2
+  namespace: adr
+spec:
+  ports:
+    - name: http
+      port: 9101
+      targetPort: 9101
+  selector:
+    app: vtt-backend-2
+    io.biza/component: vtt-api-2
+    io.biza/system: adr
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: vtt-backend-2
+    io.biza/component: vtt-api-2
+    io.biza/system: adr
+  name: vtt-backend-2
+  namespace: adr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vtt-backend-2
+      io.biza/component: vtt-api-2
+      io.biza/system: adr
+  template:
+    metadata:
+      labels:
+        app: vtt-backend-2
+        io.biza/component: vtt-api-2
+        io.biza/system: adr
+    spec:
+      containers:
+        - env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  key: spring-profiles-active
+                  name: vtt-api-config-2-4hhhm8tt4d
+            - name: VTT_FRONTEND-URL
+              valueFrom:
+                configMapKeyRef:
+                  key: vtt-frontend-url
+                  name: vtt-api-config-2-4hhhm8tt4d
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUE-TOKEN_CLIENT-ID
+              valueFrom:
+                configMapKeyRef:
+                  key: client-id
+                  name: vtt-api-config-2-4hhhm8tt4d
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_OPAQUE-TOKEN_CLIENT-SECRET
+              valueFrom:
+                configMapKeyRef:
+                  key: client-secret
+                  name: vtt-api-config-2-4hhhm8tt4d
+            - name: IDP_CLIENT-ID
+              valueFrom:
+                configMapKeyRef:
+                  key: og-client-id
+                  name: vtt-api-config-2-4hhhm8tt4d
+            - name: IDP_CLIENT-SECRET
+              valueFrom:
+                configMapKeyRef:
+                  key: og-client-secret
+                  name: vtt-api-config-2-4hhhm8tt4d
+          image: software/adr/vtt/backend-2:999f9980-dirty
+          imagePullPolicy: Never
+          name: vtt-backend-2
+          volumeMounts:
+            - mountPath: /etc/ca
+              name: secret-volume
+      volumes:
+        - name: secret-volume
+          secret:
+            secretName: ca-secret
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: sandbox-ca-cluster-issuer
+  labels:
+    io.biza/component: vtt-api-2
+    io.biza/system: adr
+  name: ingress-vtt-api-2
+  namespace: adr
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: vtt-api-2.sandbox.biza.local
+      http:
+        paths:
+          - backend:
+              service:
+                name: vtt-backend-service-2
+                port:
+                  number: 9101
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - vtt-api-2.sandbox.biza.local
+      secretName: vtt-api-2-ingress-cert
+---
+apiVersion: v1
+data:
+  config.json: |-
+    {
+      "vtt": {
+        "vttApiBaseUri": "https://vtt-api-2.sandbox.biza.local",
+        "templateId": "ad017ec9-b87a-4b1d-91e0-7e122033f677",
+        "directoryId": "9c1b745a-374a-456c-b14a-8f408d14ed82",
+        "DASHBOARD_BASE_URI": "https://og-dashboard-secure.sandbox.biza.local",
+        "appBaseUri": "https://vtt-2.sandbox.biza.local"
+      },
+      "system_oauth": {
+        "issuer": "https://mock-auth.sandbox.biza.local",
+        "clientId": "vtt-web-2",
+        "clientSecret": "vtt-web-secret-2"
+      },
+      "user_oauth": {
+        "issuer": "https://mock-auth.sandbox.biza.local",
+        "clientId": "vtt-appliance-2",
+        "clientSecret": "vtt-appliance-secret-2"
+      },
+      "logging": {
+        "name": "consent",
+        "level": "debug"
+      }
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    io.biza/component: vtt-2
+    io.biza/system: adr
+  name: vtt-app-config-2-577gdc4d46
+  namespace: adr
+---
+apiVersion: v1
+data:
+  uiconfig.json: |-
+    {
+      "fonts": {
+        "heading1": "Karla Regular",
+        "heading2": "Archivo Light",
+        "heading3": "Archivo Light",
+        "heading4": "Archivo Light",
+        "button": "Karla Regular",
+        "forms": "Archivo Light",
+        "body": "Archivo Light"
+      },
+      "colors": {
+        "trustBlue": "#45A1F0",
+        "boldBlue": "#01103F",
+        "nodePink": "#D2348C",
+        "peerToPeerPurple": "#7228BB",
+        "trueBlue": "#1528E6",
+        "page": {
+          "background": "#F3F3F0"
+        },
+        "header": {
+          "background": "white",
+          "shadow-color": "#BDB7B1"
+        },
+        "card": {
+          "border": "#73B563"
+        }
+      }
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    io.biza/component: vtt-2
+    io.biza/system: adr
+  name: vtt-app-uiconfig-2-ckbgb9t9ff
+  namespace: adr
+---
+apiVersion: v1
+data:
+  secret: |
+    a09zV1ViIWFiUlVjUnVnbFBIT3phcEhVcGh1QlVUdWNyb1NsR2lDcnVtKmtMekVyVXRybE
+    RyJHllRjFLLStheQ==
+kind: Secret
+metadata:
+  labels:
+    io.biza/component: vtt-2
+    io.biza/system: adr
+  name: nextauth-78tf942787
+  namespace: adr
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: vtt-2
+    io.biza/component: vtt-2
+    io.biza/system: adr
+  name: vtt-service-2
+  namespace: adr
+spec:
+  ports:
+    - name: http
+      port: 9152
+      targetPort: 3000
+  selector:
+    app: vtt-2
+    io.biza/component: vtt-2
+    io.biza/system: adr
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: vtt-2
+    io.biza/component: vtt-2
+    io.biza/system: adr
+  name: vtt-2
+  namespace: adr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vtt-2
+      io.biza/component: vtt-2
+      io.biza/system: adr
+  template:
+    metadata:
+      labels:
+        app: vtt-2
+        io.biza/component: vtt-2
+        io.biza/system: adr
+    spec:
+      containers:
+        - env:
+            - name: APP_MODE
+              value: sandbox
+            - name: CONFIG_FILE
+              value: /app/config/config.json
+            - name: UICONFIG_FILE
+              value: /app/config/uiconfig.json
+            - name: NEXTAUTH_URL
+              value: https://vtt-2.sandbox.biza.local
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: secret
+                  name: nextauth-78tf942787
+          image: software/adr/vtt/frontend-2:999f9980
+          imagePullPolicy: Never
+          name: vtt-2
+          volumeMounts:
+            - mountPath: /etc/ca
+              name: secret-volume
+            - mountPath: /app/config
+              name: config
+      volumes:
+        - name: secret-volume
+          secret:
+            secretName: ca-secret
+        - configMap:
+            name: vtt-app-config-2-577gdc4d46
+          name: config
+        - configMap:
+            name: vtt-app-uiconfig-2-ckbgb9t9ff
+          name: uiconfig
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: sandbox-ca-cluster-issuer
+  labels:
+    io.biza/component: vtt-2
+    io.biza/system: adr
+  name: ingress-vtt-2
+  namespace: adr
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: vtt-2.sandbox.biza.local
+      http:
+        paths:
+          - backend:
+              service:
+                name: vtt-service-2
+                port:
+                  number: 9152
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - vtt-2.sandbox.biza.local
+      secretName: vtt-2-ingress-cert
+---
+apiVersion: v1
+data:
+  config.json: |-
+    {
+      "system_oauth": {
+        "issuer": "https://mock-auth.sandbox.biza.local",
+        "clientId": "og-dashboard-web",
+        "clientSecret": "og-dashboard-web-secret"
+      },
+      "user_oauth": {
+        "issuer": "https://mock-auth.sandbox.biza.local",
+        "clientId": "og-appliance",
+        "clientSecret": "og-appliance-secret"
+      },
+      "og": {
+        "uri": "https://og-secure.sandbox.biza.local/dio-au/v1",
+        "directoryId": "9c1b745a-374a-456c-b14a-8f408d14ed82"
+      },
+      "dashboardHome": "https://og-dashboard-secure.sandbox.biza.local",
+      "theme": "bizaTheme",
+      "themeLogoUri": "https://auth.sandbox.biza.local/base/assets/logo.png",
+      "templateId": "02128299-8623-4f1f-a2cb-0158c83f41e3"
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    io.biza/component: dashboard
+    io.biza/system: adr
+  name: dashboard-app-config-hcf9mmk6g7
+  namespace: adr
+---
+apiVersion: v1
+data:
+  secret: |
+    YyE0UkBLKyshNFhpc3d1U2x0aDZxZTBoSSY4Y2w0dCN3ZSRhVGhMJmhFKzJvY2hlI3VXcm
+    8mJmxuRXhfPzZVIQ==
+kind: Secret
+metadata:
+  labels:
+    io.biza/component: dashboard
+    io.biza/system: adr
+  name: nextauth-b5bg4bkhmf
+  namespace: adr
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: og-dashboard
+    io.biza/component: dashboard
+    io.biza/system: adr
+  name: og-dashboard-service
+  namespace: adr
+spec:
+  ports:
+    - name: http
+      port: 9102
+      targetPort: 3000
+  selector:
+    app: og-dashboard
+    io.biza/component: dashboard
+    io.biza/system: adr
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: og-dashboard
+    io.biza/component: dashboard
+    io.biza/system: adr
+  name: og-dashboard
+  namespace: adr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: og-dashboard
+      io.biza/component: dashboard
+      io.biza/system: adr
+  template:
+    metadata:
+      labels:
+        app: og-dashboard
+        io.biza/component: dashboard
+        io.biza/system: adr
+    spec:
+      containers:
+        - env:
+            - name: CONFIG_FILE
+              value: /app/config/config.json
+            - name: NEXTAUTH_URL
+              value: https://og-dashboard-secure.sandbox.biza.local
+            - name: NEXTAUTH_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: secret
+                  name: nextauth-b5bg4bkhmf
+          image: software/adr/og-dashboard:999f9980
+          imagePullPolicy: Never
+          name: og-dashboard
+          volumeMounts:
+            - mountPath: /etc/ca
+              name: secret-volume
+            - mountPath: /app/config
+              name: config
+      volumes:
+        - name: secret-volume
+          secret:
+            secretName: ca-secret
+        - configMap:
+            name: dashboard-app-config-hcf9mmk6g7
+          name: config
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: sandbox-ca-cluster-issuer
+  labels:
+    io.biza/component: dashboard
+    io.biza/system: adr
+  name: ingress-dashboard-secure
+  namespace: adr
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: og-dashboard-secure.sandbox.biza.local
+      http:
+        paths:
+          - backend:
+              service:
+                name: og-dashboard-service
+                port:
+                  number: 9102
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - og-dashboard-secure.sandbox.biza.local
+      secretName: og-dashboard-secure-ingress-cert
+---
+apiVersion: v1
+data:
+  config.json: |
+    {
+      "oauth": {
+        "issuer": "https://mock-auth.sandbox.biza.local",
+        "clientId": "og-consent-web",
+        "clientSecret": "og-consent-web-secret"
+      },
+      "og": {
+        "uri": "https://og-secure.sandbox.biza.local/dio-au/v1",
+        "directoryId": "9c1b745a-374a-456c-b14a-8f408d14ed82"
+      }
+    }
+kind: ConfigMap
+metadata:
+  labels:
+    io.biza/component: consent
+    io.biza/system: adr
+  name: consent-app-config-6kkf7t26t8
+  namespace: adr
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: og-consent
+    io.biza/component: consent
+    io.biza/system: adr
+  name: og-consent-service
+  namespace: adr
+spec:
+  ports:
+    - name: http
+      port: 9103
+      targetPort: 3000
+  selector:
+    app: og-consent
+    io.biza/component: consent
+    io.biza/system: adr
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: og-consent
+    io.biza/component: consent
+    io.biza/system: adr
+  name: og-consent
+  namespace: adr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: og-consent
+      io.biza/component: consent
+      io.biza/system: adr
+  template:
+    metadata:
+      labels:
+        app: og-consent
+        io.biza/component: consent
+        io.biza/system: adr
+    spec:
+      containers:
+        - env:
+            - name: CONFIG_FILE
+              value: /app/config/config.json
+          image: software/adr/og-consent:999f9980
+          imagePullPolicy: Never
+          name: og-consent
+          volumeMounts:
+            - mountPath: /etc/ca
+              name: secret-volume
+            - mountPath: /etc/cert
+              name: og-consent-secure-cert-volume
+            - mountPath: /app/config
+              name: config
+      volumes:
+        - name: secret-volume
+          secret:
+            secretName: ca-secret
+        - name: og-consent-secure-cert-volume
+          secret:
+            secretName: og-consent-secure-ingress-cert
+        - configMap:
+            name: consent-app-config-6kkf7t26t8
+          name: config
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: sandbox-ca-cluster-issuer
+  labels:
+    io.biza/component: consent
+    io.biza/system: adr
+  name: ingress-consent-secure
+  namespace: adr
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: og-consent-secure.sandbox.biza.local
+      http:
+        paths:
+          - backend:
+              service:
+                name: og-consent-service
+                port:
+                  number: 9103
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - og-consent-secure.sandbox.biza.local
+      secretName: og-consent-secure-ingress-cert

@@ -1,0 +1,74 @@
+---
+# See https://github.com/thanos-io/thanos/blob/main/docs/storage.md
+apiVersion: v1
+kind: Secret
+metadata:
+  name: thanos-objstore-config
+  namespace: monitoring
+stringData:
+  thanos.yaml: |
+    type: s3
+    config:
+      bucket: ap-southeast-2-840220772327-biza-appliance-metrics
+      region: ap-southeast-2
+      endpoint: s3-website-ap-southeast-2.amazonaws.com
+      aws_sdk_auth: true
+      sse_config:
+        type: "SSE-S3"
+      trace:
+        enable: true
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  labels:
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/instance: k8s
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: kube-prometheus
+    app.kubernetes.io/version: 2.45.0
+  name: k8s
+  namespace: monitoring
+spec:
+  alerting:
+    alertmanagers:
+    - apiVersion: v2
+      name: alertmanager-main
+      namespace: monitoring
+      port: web
+  enableFeatures: []
+  externalLabels: {}
+  image: quay.io/prometheus/prometheus:v2.45.0
+  nodeSelector:
+    kubernetes.io/os: linux
+  podMetadata:
+    labels:
+      app.kubernetes.io/component: prometheus
+      app.kubernetes.io/instance: k8s
+      app.kubernetes.io/name: prometheus
+      app.kubernetes.io/part-of: kube-prometheus
+      app.kubernetes.io/version: 2.45.0
+  podMonitorNamespaceSelector: {}
+  podMonitorSelector: {}
+  probeNamespaceSelector: {}
+  probeSelector: {}
+  replicas: 2
+  resources:
+    requests:
+      memory: 400Mi
+  ruleNamespaceSelector: {}
+  ruleSelector: {}
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  serviceAccountName: prometheus-k8s
+  serviceMonitorNamespaceSelector: {}
+  serviceMonitorSelector: {}
+  version: 2.45.0
+  thanos:
+    image: quay.io/thanos/thanos:v0.31.0
+    objectStorageConfig:
+      key: thanos.yaml
+      name: thanos-objstore-config
+    additionalArgs: []
