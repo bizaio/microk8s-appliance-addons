@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: biza-base
+commonLabels:
+  io.biza/component: base
+  io.biza/system: appliance
+helmCharts:
+  - name: kms-issuer
+    repo: https://skyscanner.github.io/kms-issuer
+    namespace: kms-issuer-system
+    includeCRDs: true
+    valuesFile: config/helm-kms-issuer-values.yaml
+resources:
+  - resources/kms-issuer.yaml

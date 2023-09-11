@@ -1,0 +1,48 @@
+---
+apiVersion: cert-manager.skyscanner.net/v1alpha1
+kind: KMSIssuer
+metadata:
+  name: kms-issuer
+  namespace: cert-manager
+spec:
+  keyId: alias/biza-appliance-signing-key
+  commonName: Biza Appliance CA
+  duration: 87600h # 10 years
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: appliance-ca-certificate
+  namespace: cert-manager
+spec:
+  # Secret names are always required.
+  secretName: appliance-ca-keypair
+
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+
+  subject:
+    organizations:
+      - biza
+  commonName: appliance-ca
+  isCA: true
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  usages:
+    - cert sign
+    - signing
+  issuerRef:
+    name: kms-issuer
+    kind: ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: kms-issuer
+  namespace: cert-manager
+spec:
+  ca:
+    secretName: appliance-ca-keypair

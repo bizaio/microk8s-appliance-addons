@@ -1,0 +1,6 @@
+{
+  "logging": {
+    "name": "admin",
+    "level": "debug"
+  }
+}

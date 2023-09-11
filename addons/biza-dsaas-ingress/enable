@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+
+current_directory=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+name=$(basename $current_directory)
+
+echo "*** Setup ${name} starting..."
+
+echo "### Ensuring addon dependencies been enabled..."
+$SNAP/microk8s-enable.wrapper biza-base
+
+echo "### Setup base kustomize..."
+$SNAP/microk8s-kubectl.wrapper kustomize --enable-helm $current_directory | $SNAP/microk8s-kubectl.wrapper apply -f -
+
+echo "*** Setup $name complete"
