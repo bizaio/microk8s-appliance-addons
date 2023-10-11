@@ -14,7 +14,7 @@ spec:
             path: /
             backend:
               service:
-                name: og-admin-service
+                name: appliance-admin-service
                 port:
                   number: 9105
   tls:

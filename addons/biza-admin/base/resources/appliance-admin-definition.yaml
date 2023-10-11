@@ -7,28 +7,26 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: og-admin
-  name: og-admin
+    app: appliance-admin
+  name: appliance-admin
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: og-admin
+      app: appliance-admin
   template:
     metadata:
       labels:
-        app: og-admin
+        app: appliance-admin
     spec:
       serviceAccountName: admin-serviceaccount
       containers:
-        - image: images.onbiza.net/dsaas_admin:latest
+        - image: images.onbiza.net/appliance_admin:latest
           imagePullPolicy: Always
-          name: og-admin
+          name: appliance-admin
           volumeMounts:
             - name: config
               mountPath: /app/config
-            - name: deployments
-              mountPath: /app/config/deployments
           env:
             - name: NEXTAUTH_URL
               value: https://admin.delegated.appliance.demo
@@ -37,23 +35,21 @@ spec:
                 secretKeyRef:
                   name: nextauth
                   key: secret
+            - name: PRODUCT_CODE
+              value: OG
 
       volumes:
         - name: config
           configMap:
             name: admin-app-config
-        - name: deployments
-          configMap:
-            name: admin-app-deployment-config
-
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: og-admin
-  name: og-admin-service
+    app: appliance-admin
+  name: appliance-admin-service
   namespace: administration
 spec:
   type: ClusterIP
@@ -62,4 +58,4 @@ spec:
       port: 9105
       targetPort: 3000
   selector:
-    app: og-admin
+    app: appliance-admin

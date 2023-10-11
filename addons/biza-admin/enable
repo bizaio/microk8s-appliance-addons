@@ -9,8 +9,9 @@ current_directory=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 name=$(basename $current_directory)
 
 ADMIN_DOMAIN=${1:-"admin.delegated.appliance.demo"}
+PRODUCT_CODE=${2:-"OG"}
 
-echo "*** Setup ${name} starting with admin domain $ADMIN_DOMAIN..."
+echo "*** Setup ${name} starting with admin domain $ADMIN_DOMAIN for product code $PRODUCT_CODE..."
 
 echo "### Ensuring addon dependencies been enabled..."
 $SNAP/microk8s-enable.wrapper biza-base
@@ -37,11 +38,14 @@ patches:
       group: apps
       version: v1
       kind: Deployment
-      name: og-admin
+      name: appliance-admin
     patch: |-
       - op: replace #action
         path: /spec/template/spec/containers/0/env/0/value
         value: https://$ADMIN_DOMAIN
+      - op: replace #action
+        path: /spec/template/spec/containers/0/env/2/value
+        value: $PRODUCT_CODE
 EOF
 
 echo "### Setup base kustomize..."

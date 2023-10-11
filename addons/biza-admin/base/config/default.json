@@ -1,6 +1,16 @@
 {
   "logging": {
-    "name": "admin",
+    "name": "appliance-admin",
     "level": "debug"
+  },
+  "application": {
+    "domainName": "http://localhost:3000",
+    "bootstrapModeEnabled": true
+  },
+  "rbac": {
+    "enabled": false,
+    "issuer": "http://127.0.0.1:1337",
+    "clientId": "admin-appliance",
+    "clientSecret": "admin-appliance-secret"
   }
 }

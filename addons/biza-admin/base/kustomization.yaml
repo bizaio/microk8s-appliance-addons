@@ -12,15 +12,12 @@ helmCharts:
     includeCRDs: true
 resources:
   - resources/admin-service-account.yaml
-  - resources/og-admin-definition.yaml
+  - resources/appliance-admin-definition.yaml
   - resources/ingress-admin-secure.yaml
 configMapGenerator:
   - name: admin-app-config
     files:
       - config/default.json
-  - name: admin-app-deployment-config
-    files:
-      - config/nginxdemo.yml
 secretGenerator:
   - name: nextauth
     literals:
