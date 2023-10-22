@@ -12,6 +12,7 @@ echo "*** Setup ${name} starting..."
 
 echo "### Ensuring addon dependencies been enabled..."
 $SNAP/microk8s-enable.wrapper rbac
+$SNAP/microk8s-enable.wrapper hostpath-storage
 
 echo "### Setup certmanager..."
 $SNAP/microk8s-kubectl.wrapper apply -f https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANGER_VERSION}/cert-manager.yaml
