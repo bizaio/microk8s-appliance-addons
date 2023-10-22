@@ -127,3 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+addons/biza-admin/base/charts/ingress-nginx
+addons/biza-og-ingress/charts/ingress-nginx
