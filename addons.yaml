@@ -19,20 +19,20 @@ microk8s-addons:
     - name: biza-admin
       description: Appliance Admin UI
       version: "1.0.0"
-      check_status: "deployment.apps/og-admin"
+      check_status: "deployment.apps/appliance-admin"
       supported_architectures:
         - amd64
 
     - name: biza-og-ingress
       description: Ingress resources for the OG variant of the biza appliance
       version: "1.0.0"
-      check_status: "ingress.networking.k8s.io/og-software-product"
+      check_status: "service/og-ingress-software-product-nginx-controller"
       supported_architectures:
         - amd64
 
     - name: biza-dsaas-ingress
       description: Ingress resources for the DSaaS variant of the biza appliance
       version: "1.0.0"
-      check_status: "ingress.networking.k8s.io/dsaas-adapter"
+      check_status: "service/dsaas-ingress-adapter-ingress-nginx-controller"
       supported_architectures:
         - amd64
