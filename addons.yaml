@@ -19,7 +19,7 @@ microk8s-addons:
     - name: biza-admin
       description: Appliance Admin UI
       version: "1.0.0"
-      check_status: "deployment.apps/appliance-admin"
+      check_status: "ingress.networking.k8s.io/ingress-admin-secure"
       supported_architectures:
         - amd64
 
