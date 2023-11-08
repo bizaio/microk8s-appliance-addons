@@ -5,11 +5,7 @@
   },
   "application": {
     "domainName": "http://localhost:3000",
-    "bootstrapModeEnabled": true,
-    "readonlyTokenRequest": {
-      "serviceAccountName": "default",
-      "namespace": "administration"
-    }
+    "bootstrapModeEnabled": true
   },
   "rbac": {
     "enabled": false,
