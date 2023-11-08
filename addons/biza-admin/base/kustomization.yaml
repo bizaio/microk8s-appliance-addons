@@ -18,7 +18,3 @@ configMapGenerator:
   - name: admin-app-config
     files:
       - config/default.json
-secretGenerator:
-  - name: nextauth
-    literals:
-      - secret=c!4R@K++!4XiswuSlth6qe0hI&8cl4t#w:w:qe$aThL&hE+2oche#uWro&&lnEx_?6U!
