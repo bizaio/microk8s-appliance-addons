@@ -40,12 +40,16 @@ patches:
       kind: Deployment
       name: appliance-admin
     patch: |-
-      - op: replace #action
-        path: /spec/template/spec/containers/0/env/0/value
-        value: https://$ADMIN_DOMAIN
-      - op: replace #action
-        path: /spec/template/spec/containers/0/env/2/value
-        value: $PRODUCT_CODE
+      - op: add #action
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: NEXTAUTH_URL
+          value: https://$ADMIN_DOMAIN
+      - op: add #action
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: PRODUCT_CODE
+          value: $PRODUCT_CODE
       - op: add #action
         path: /spec/template/spec/containers/0/env/-
         value:

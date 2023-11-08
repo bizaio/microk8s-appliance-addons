@@ -27,12 +27,7 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /app/config
-          env:
-            - name: NEXTAUTH_URL
-              value: https://admin.delegated.appliance.demo
-            - name: PRODUCT_CODE
-              value: OG
-
+          env: []
       volumes:
         - name: config
           configMap:
