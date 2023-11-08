@@ -30,11 +30,6 @@ spec:
           env:
             - name: NEXTAUTH_URL
               value: https://admin.delegated.appliance.demo
-            - name: NEXTAUTH_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: nextauth
-                  key: secret
             - name: PRODUCT_CODE
               value: OG
 

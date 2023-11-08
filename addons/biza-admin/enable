@@ -46,6 +46,13 @@ patches:
       - op: replace #action
         path: /spec/template/spec/containers/0/env/2/value
         value: $PRODUCT_CODE
+      - op: add #action
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: NEXTAUTH_SECRET
+          value: "$(openssl rand -base64 32)"
+
+
 EOF
 
 echo "### Setup base kustomize..."
